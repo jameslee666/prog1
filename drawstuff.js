@@ -2,7 +2,9 @@
 
 // Color constructor
 class Color {
-    constructor(r, g, b, a) {
+
+    // Color constructor default opaque black
+    constructor(r = 0, g = 0, b = 0, a = 255) {
         try {
             if ((typeof(r) !== "number") || (typeof(g) !== "number") || (typeof(b) !== "number") || (typeof(a) !== "number"))
                 throw "color component not a number";
@@ -37,6 +39,7 @@ class Color {
                 this.g = g;
                 this.b = b;
                 this.a = a;
+                return (this);
             }
         } // end throw
 
@@ -44,6 +47,95 @@ class Color {
             console.log(e);
         }
     } // end Color change method
+
+    // Color add method
+    add(c) {
+        try {
+            if (!(c instanceof Color))
+                throw "Color.add: non-color parameter";
+            else {
+                this.r += c.r;
+                this.g += c.g;
+                this.b += c.b;
+                this.a += c.a;
+                return (this);
+            }
+        } // end try
+
+        catch (e) {
+            console.log(e);
+        }
+    } // end color add
+
+    // Color subtract method
+    subtract(c) {
+        try {
+            if (!(c instanceof Color))
+                throw "Color.subtract: non-color parameter";
+            else {
+                this.r -= c.r;
+                this.g -= c.g;
+                this.b -= c.b;
+                this.a -= c.a;
+                return (this);
+            }
+        } // end try
+
+        catch (e) {
+            console.log(e);
+        }
+    } // end color subgtract
+
+    // Color scale method
+    scale(s) {
+        try {
+            if (typeof(s) !== "number")
+                throw "scale factor not a number";
+            else {
+                this.r *= s;
+                this.g *= s;
+                this.b *= s;
+                this.a *= s;
+                return (this);
+            }
+        } // end throw
+
+        catch (e) {
+            console.log(e);
+        }
+    } // end Color scale method
+
+    // Color copy method
+    copy(c) {
+        try {
+            if (!(c instanceof Color))
+                throw "Color.copy: non-color parameter";
+            else {
+                this.r = c.r;
+                this.g = c.g;
+                this.b = c.b;
+                this.a = c.a;
+                return (this);
+            }
+        } // end try
+
+        catch (e) {
+            console.log(e);
+        }
+    } // end Color copy method
+
+    // Color clone method
+    clone() {
+        var newColor = new Color();
+        newColor.copy(this);
+        return (newColor);
+    } // end Color clone method
+
+    // Send color to console
+    toConsole() {
+        console.log("rgba: " + this.r + " " + this.g + " " + this.b + " " + this.a);
+    }  // end Color toConsole
+
 } // end color class
 
 class Vector {
@@ -216,9 +308,8 @@ function drawRandPixels(context) {
 } // end draw random pixels
 
 // get the input ellipsoids from the standard class URL
-function getInputEllipsoids() {
-    const INPUT_ELLIPSOIDS_URL =
-        "https://ncsucgclass.github.io/prog1/ellipsoids.json";
+function getInputParameters(url) {
+    const INPUT_ELLIPSOIDS_URL = url;
 
     // load the ellipsoids file
     var httpReq = new XMLHttpRequest(); // a new http request
@@ -291,20 +382,31 @@ function drawRandPixelsInInputEllipsoids(context) {
     } // end if ellipsoids found
 } // end draw rand pixels in input ellipsoids
 
-function part1(context, eye) {
-    var inputEllipsoids = getInputEllipsoids();
+const PART1 = 0;
+const PART2 = 1;
+
+function raycasting(context, eye, mode) {
+    var inputEllipsoids = getInputParameters("https://jameslee666.github.io/prog1/ellipsoids.json");
+    var light = getInputParameters("https://jameslee666.github.io/prog1/lights.json");
     var w = context.canvas.width;
     var h = context.canvas.height;
     var imagedata = context.createImageData(w, h);
     var n = inputEllipsoids.length;
     var c = new Color(0, 0, 0, 0);
 
-    if (inputEllipsoids != String.null) {
+    if (inputEllipsoids != String.null && light != String.null) {
+        var ambColor = new Color();
+        var difColor = new Color();
+        var speColor = new Color();
+        var lightCol = new Color(255, 255, 255);
+        var lightPos = new Vector(light[0].x, light[0].y, light[0].z);
+
         for (var x = 0; x < 1; x += 1 / w) {
             for (var y = 0; y < 1; y += 1 / h) {
                 var P = new Vector(x, y, 0);
                 var D = Vector.subtract(P, eye);
                 var min_t = 10000;
+                var which_ellip = -1;
                 for (var e = 0; e < n; e++) {
                     var center = new Vector(inputEllipsoids[e].x, inputEllipsoids[e].y, inputEllipsoids[e].z);
                     var t = valueOf_t(eye, D, center, inputEllipsoids[e].a, inputEllipsoids[e].b, inputEllipsoids[e].c);
@@ -315,12 +417,8 @@ function part1(context, eye) {
                             continue;
                         }
                         if (t < min_t) {
-                            c.change(
-                                inputEllipsoids[e].diffuse[0] * 255,
-                                inputEllipsoids[e].diffuse[1] * 255,
-                                inputEllipsoids[e].diffuse[2] * 255,
-                                255);
                             min_t = t;
+                            which_ellip = e;
                         }
                     } else {
                         var large = t[0];
@@ -330,27 +428,62 @@ function part1(context, eye) {
                         }
                         if (small >= 1) {
                             if (small < min_t) {
-                                c.change(
-                                    inputEllipsoids[e].diffuse[0] * 255,
-                                    inputEllipsoids[e].diffuse[1] * 255,
-                                    inputEllipsoids[e].diffuse[2] * 255,
-                                    255);
                                 min_t = small;
+                                which_ellip = e;
                             }
                         } else {
-                            if (large < t) {
-                                c.change(
-                                    inputEllipsoids[e].diffuse[0] * 255,
-                                    inputEllipsoids[e].diffuse[1] * 255,
-                                    inputEllipsoids[e].diffuse[2] * 255,
-                                    255);
+                            if (large < min_t) {
                                 min_t = large;
+                                which_ellip = e;
                             }
                         }
                     }
                 }
-                if (min_t != 10000) {
+                if (mode == PART1 && min_t != 10000) {
+                    c.change(
+                        inputEllipsoids[which_ellip].diffuse[0] * 255,
+                        inputEllipsoids[which_ellip].diffuse[1] * 255,
+                        inputEllipsoids[which_ellip].diffuse[2] * 255,
+                        255);
                     drawPixel(imagedata, x * w, 512 - y * h, c);
+                }
+                if (mode == PART2 && min_t != 10000) {
+                    var surface = Vector.add(eye, Vector.scale(min_t, D));
+                    var lVect = Vector.subtract(lightPos, surface);
+                    lVect = Vector.normalize(lVect);
+                    var NVect = new Vector(2 * (surface.x - inputEllipsoids[which_ellip].x) / square(inputEllipsoids[which_ellip].a),
+                        2 * (surface.y - inputEllipsoids[which_ellip].y) / square(inputEllipsoids[which_ellip].b),
+                        2 * (surface.z - inputEllipsoids[which_ellip].z) / square(inputEllipsoids[which_ellip].c)
+                    );
+                    NVect = Vector.normalize(NVect);
+                    var NdotL = Vector.dot(NVect, lVect);
+
+                    var RVect = Vector.subtract(Vector.scale(2 * NdotL, NVect), lVect);
+                    RVect = Vector.normalize(RVect);
+
+                    var VVect = Vector.subtract(eye, surface);
+                    VVect = Vector.normalize(VVect);
+
+                    var RVn = Math.pow(Vector.dot(RVect, VVect), inputEllipsoids[which_ellip].n);
+
+
+                    ambColor.r = inputEllipsoids[which_ellip].ambient[0] * lightCol.r;
+                    ambColor.g = inputEllipsoids[which_ellip].ambient[1] * lightCol.g;
+                    ambColor.b = inputEllipsoids[which_ellip].ambient[2] * lightCol.b;
+
+                    difColor.r = inputEllipsoids[which_ellip].diffuse[0] * lightCol.r * NdotL;
+                    difColor.g = inputEllipsoids[which_ellip].diffuse[1] * lightCol.g * NdotL;
+                    difColor.b = inputEllipsoids[which_ellip].diffuse[2] * lightCol.b * NdotL;
+
+                    speColor.r = inputEllipsoids[which_ellip].specular[0] * lightCol.r * RVn;
+                    speColor.g = inputEllipsoids[which_ellip].specular[1] * lightCol.g * RVn;
+                    speColor.b = inputEllipsoids[which_ellip].specular[2] * lightCol.b * RVn;
+
+                    var p_color = new Color();
+                    p_color.add(ambColor).add(difColor).add(speColor);
+                    p_color.a = 255;
+
+                    drawPixel(imagedata, x * w, 512 - y * h, p_color);
                 }
 
             }
@@ -358,6 +491,7 @@ function part1(context, eye) {
         context.putImageData(imagedata, 0, 0);
     }
 }
+
 
 function square(x) {
     return x * x;
@@ -431,5 +565,5 @@ function main() {
     // drawInputEllipsoidsUsingArcs(context);
     // shows how to read input file, but not how to draw pixels
 
-    part1(context, eye);
+    raycasting(context, eye, PART2);
 }
