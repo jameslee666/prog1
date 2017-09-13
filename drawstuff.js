@@ -458,13 +458,12 @@ function raycasting(context, eye, mode) {
                     NVect = Vector.normalize(NVect);
                     var NdotL = Vector.dot(NVect, lVect);
 
-                    var RVect = Vector.subtract(Vector.scale(2 * NdotL, NVect), lVect);
-                    RVect = Vector.normalize(RVect);
-
                     var VVect = Vector.subtract(eye, surface);
                     VVect = Vector.normalize(VVect);
 
-                    var RVn = Math.pow(Vector.dot(RVect, VVect), inputEllipsoids[which_ellip].n);
+                    var HVect = Vector.normalize(Vector.add(VVect,lVect));
+
+                    var NHn = Math.pow(Vector.dot(NVect, HVect), inputEllipsoids[which_ellip].n);
 
 
                     ambColor.r = inputEllipsoids[which_ellip].ambient[0] * lightCol.r;
@@ -475,9 +474,9 @@ function raycasting(context, eye, mode) {
                     difColor.g = inputEllipsoids[which_ellip].diffuse[1] * lightCol.g * NdotL;
                     difColor.b = inputEllipsoids[which_ellip].diffuse[2] * lightCol.b * NdotL;
 
-                    speColor.r = inputEllipsoids[which_ellip].specular[0] * lightCol.r * RVn;
-                    speColor.g = inputEllipsoids[which_ellip].specular[1] * lightCol.g * RVn;
-                    speColor.b = inputEllipsoids[which_ellip].specular[2] * lightCol.b * RVn;
+                    speColor.r = inputEllipsoids[which_ellip].specular[0] * lightCol.r * NHn;
+                    speColor.g = inputEllipsoids[which_ellip].specular[1] * lightCol.g * NHn;
+                    speColor.b = inputEllipsoids[which_ellip].specular[2] * lightCol.b * NHn;
 
                     var p_color = new Color();
                     p_color.add(ambColor).add(difColor).add(speColor);
@@ -548,7 +547,7 @@ function drawInputEllipsoidsUsingArcs(context) {
 
 /* main -- here is where execution begins after window load */
 
-function main() {
+function main_part2() {
 
     // Get the canvas and context
     var canvas = document.getElementById("viewport");
@@ -566,4 +565,24 @@ function main() {
     // shows how to read input file, but not how to draw pixels
 
     raycasting(context, eye, PART2);
+}
+
+function main_part1() {
+
+    // Get the canvas and context
+    var canvas = document.getElementById("viewport");
+    var context = canvas.getContext("2d");
+    var eye = new Vector(0.5, 0.5, -0.5);
+
+    // Create the image
+    //drawRandPixels(context);
+    // shows how to draw pixels
+
+    //drawRandPixelsInInputEllipsoids(context);
+    // shows how to draw pixels and read input file
+
+    // drawInputEllipsoidsUsingArcs(context);
+    // shows how to read input file, but not how to draw pixels
+
+    raycasting(context, eye, PART1);
 }
