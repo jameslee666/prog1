@@ -384,10 +384,12 @@ function drawRandPixelsInInputEllipsoids(context) {
 
 const PART1 = 0;
 const PART2 = 1;
+const NO_SHADE = false;
+const WITH_SHADE = true;
 
-function raycasting(context, eye, mode) {
-    var inputEllipsoids = getInputParameters("https://jameslee666.github.io/prog1/ellipsoids.json");
-    var light = getInputParameters("https://jameslee666.github.io/prog1/lights.json");
+function raycasting(context, eye, mode, withshade) {
+    var inputEllipsoids = getInputParameters("https://ncsucgclass.github.io/prog1/ellipsoids.json");
+    var light = getInputParameters("https://ncsucgclass.github.io/prog1/lights.json");
     var w = context.canvas.width;
     var h = context.canvas.height;
     var imagedata = context.createImageData(w, h);
@@ -398,14 +400,13 @@ function raycasting(context, eye, mode) {
         var ambColor = new Color();
         var difColor = new Color();
         var speColor = new Color();
-        var lightCol = new Color(255, 255, 255);
         var lightPos = new Vector(light[0].x, light[0].y, light[0].z);
 
         for (var x = 0; x < 1; x += 1 / w) {
             for (var y = 0; y < 1; y += 1 / h) {
                 var P = new Vector(x, y, 0);
                 var D = Vector.subtract(P, eye);
-                var min_t = 10000;
+                var min_t = 1000000;
                 var which_ellip = -1;
                 for (var e = 0; e < n; e++) {
                     var center = new Vector(inputEllipsoids[e].x, inputEllipsoids[e].y, inputEllipsoids[e].z);
@@ -439,7 +440,7 @@ function raycasting(context, eye, mode) {
                         }
                     }
                 }
-                if (mode == PART1 && min_t != 10000) {
+                if (mode == PART1 && min_t != 1000000) {
                     c.change(
                         inputEllipsoids[which_ellip].diffuse[0] * 255,
                         inputEllipsoids[which_ellip].diffuse[1] * 255,
@@ -447,44 +448,74 @@ function raycasting(context, eye, mode) {
                         255);
                     drawPixel(imagedata, x * w, 512 - y * h, c);
                 }
-                if (mode == PART2 && min_t != 10000) {
+                if (mode == PART2 && min_t != 1000000) {
                     var surface = Vector.add(eye, Vector.scale(min_t, D));
-                    var lVect = Vector.subtract(lightPos, surface);
-                    lVect = Vector.normalize(lVect);
+                    var lVect = Vector.normalize(Vector.subtract(lightPos, surface));
                     var NVect = new Vector(2 * (surface.x - inputEllipsoids[which_ellip].x) / square(inputEllipsoids[which_ellip].a),
                         2 * (surface.y - inputEllipsoids[which_ellip].y) / square(inputEllipsoids[which_ellip].b),
                         2 * (surface.z - inputEllipsoids[which_ellip].z) / square(inputEllipsoids[which_ellip].c)
                     );
                     NVect = Vector.normalize(NVect);
-                    var NdotL = Vector.dot(NVect, lVect);
+                    var NdotL = Vector.dot(lVect, NVect);
 
-                    var VVect = Vector.subtract(eye, surface);
-                    VVect = Vector.normalize(VVect);
+                    var VVect = Vector.normalize(Vector.subtract(eye, surface));
 
-                    var HVect = Vector.normalize(Vector.add(VVect,lVect));
+                    var HVect = Vector.normalize(Vector.add(VVect, lVect));
 
                     var NHn = Math.pow(Vector.dot(NVect, HVect), inputEllipsoids[which_ellip].n);
 
+                    var shade = false;
 
-                    ambColor.r = inputEllipsoids[which_ellip].ambient[0] * lightCol.r;
-                    ambColor.g = inputEllipsoids[which_ellip].ambient[1] * lightCol.g;
-                    ambColor.b = inputEllipsoids[which_ellip].ambient[2] * lightCol.b;
+                    if (withshade) {
+                        for (var e = 0; e < n; e++) {
+                            if (e == which_ellip) {
+                                continue;
+                            }
+                            var center = new Vector(inputEllipsoids[e].x, inputEllipsoids[e].y, inputEllipsoids[e].z);
+                            var ray = Vector.subtract(lightPos, surface);
+                            var t = valueOf_t(surface, ray, center, inputEllipsoids[e].a, inputEllipsoids[e].b, inputEllipsoids[e].c);
+                            if (typeof t == "number") {
+                                if (t > 0 && t < 1) {
+                                    shade = true;
+                                    break;
+                                }
+                            }
+                            if (typeof t == "object") {
+                                if ((t[0] > 0 && t[0] < 1) || (t[1] > 0 && t[1] < 1)) {
+                                    shade = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
 
-                    difColor.r = inputEllipsoids[which_ellip].diffuse[0] * lightCol.r * NdotL;
-                    difColor.g = inputEllipsoids[which_ellip].diffuse[1] * lightCol.g * NdotL;
-                    difColor.b = inputEllipsoids[which_ellip].diffuse[2] * lightCol.b * NdotL;
 
-                    speColor.r = inputEllipsoids[which_ellip].specular[0] * lightCol.r * NHn;
-                    speColor.g = inputEllipsoids[which_ellip].specular[1] * lightCol.g * NHn;
-                    speColor.b = inputEllipsoids[which_ellip].specular[2] * lightCol.b * NHn;
+                    ambColor.r = inputEllipsoids[which_ellip].ambient[0] * 255;
+                    ambColor.g = inputEllipsoids[which_ellip].ambient[1] * 255;
+                    ambColor.b = inputEllipsoids[which_ellip].ambient[2] * 255;
+
+                    difColor.r = inputEllipsoids[which_ellip].diffuse[0] * 255 * NdotL;
+                    difColor.g = inputEllipsoids[which_ellip].diffuse[1] * 255 * NdotL;
+                    difColor.b = inputEllipsoids[which_ellip].diffuse[2] * 255 * NdotL;
+
+                    speColor.r = inputEllipsoids[which_ellip].specular[0] * 255 * NHn;
+                    speColor.g = inputEllipsoids[which_ellip].specular[1] * 255 * NHn;
+                    speColor.b = inputEllipsoids[which_ellip].specular[2] * 255 * NHn;
 
                     var p_color = new Color();
-                    p_color.add(ambColor).add(difColor).add(speColor);
+                    if (withshade) {
+                        if (shade) {
+                            p_color = ambColor;
+                        } else {
+                            p_color.add(ambColor).add(difColor).add(speColor);
+                        }
+                    } else {
+                        p_color.add(ambColor).add(difColor).add(speColor);
+                    }
                     p_color.a = 255;
 
-                    drawPixel(imagedata, x * w, 512 - y * h, p_color);
+                    drawPixel(imagedata, x * w, h - y * h, p_color);
                 }
-
             }
         }
         context.putImageData(imagedata, 0, 0);
@@ -547,10 +578,10 @@ function drawInputEllipsoidsUsingArcs(context) {
 
 /* main -- here is where execution begins after window load */
 
-function main_part2() {
 
-    // Get the canvas and context
+function main_part2() {
     var canvas = document.getElementById("viewport");
+    // Get the canvas and context
     var context = canvas.getContext("2d");
     var eye = new Vector(0.5, 0.5, -0.5);
 
@@ -564,13 +595,12 @@ function main_part2() {
     // drawInputEllipsoidsUsingArcs(context);
     // shows how to read input file, but not how to draw pixels
 
-    raycasting(context, eye, PART2);
+    raycasting(context, eye, PART2, NO_SHADE);
 }
 
 function main_part1() {
-
-    // Get the canvas and context
     var canvas = document.getElementById("viewport");
+    // Get the canvas and context
     var context = canvas.getContext("2d");
     var eye = new Vector(0.5, 0.5, -0.5);
 
@@ -584,5 +614,33 @@ function main_part1() {
     // drawInputEllipsoidsUsingArcs(context);
     // shows how to read input file, but not how to draw pixels
 
-    raycasting(context, eye, PART1);
+    raycasting(context, eye, PART1, NO_SHADE);
+}
+
+function shade() {
+    var canvas = document.getElementById("viewport");
+    // Get the canvas and context
+    var context = canvas.getContext("2d");
+    var eye = new Vector(0.5, 0.5, -0.5);
+
+    // Create the image
+    //drawRandPixels(context);
+    // shows how to draw pixels
+
+    //drawRandPixelsInInputEllipsoids(context);
+    // shows how to draw pixels and read input file
+
+    // drawInputEllipsoidsUsingArcs(context);
+    // shows how to read input file, but not how to draw pixels
+
+    raycasting(context, eye, PART2, WITH_SHADE);
+}
+
+function change_size() {
+    var canvas = document.getElementById("viewport");
+    var width = document.getElementById("width").value;
+    var height = document.getElementById("height").value;
+    canvas.width = width;
+    canvas.height = height;
+    main_part2();
 }
