@@ -402,8 +402,8 @@ function raycasting(context, eye, mode, withshade) {
         var speColor = new Color();
         var lightPos = new Vector(light[0].x, light[0].y, light[0].z);
 
-        for (var x = 0; x < 1; x += 1 / w) {
-            for (var y = 0; y < 1; y += 1 / h) {
+        for (var x = 0; x <= 1; x += 1 / w) {
+            for (var y = 0; y <= 1; y += 1 / h) {
                 var P = new Vector(x, y, 0);
                 var D = Vector.subtract(P, eye);
                 var min_t = 1000000;
@@ -446,7 +446,7 @@ function raycasting(context, eye, mode, withshade) {
                         inputEllipsoids[which_ellip].diffuse[1] * 255,
                         inputEllipsoids[which_ellip].diffuse[2] * 255,
                         255);
-                    drawPixel(imagedata, x * w, 512 - y * h, c);
+                    drawPixel(imagedata, x * w, h - y * h, c);
                 }
                 if (mode == PART2 && min_t != 1000000) {
                     var surface = Vector.add(eye, Vector.scale(min_t, D));
@@ -457,12 +457,14 @@ function raycasting(context, eye, mode, withshade) {
                     );
                     NVect = Vector.normalize(NVect);
                     var NdotL = Vector.dot(lVect, NVect);
+                    NdotL = Math.max(0, NdotL);
 
                     var VVect = Vector.normalize(Vector.subtract(eye, surface));
 
                     var HVect = Vector.normalize(Vector.add(VVect, lVect));
 
                     var NHn = Math.pow(Vector.dot(NVect, HVect), inputEllipsoids[which_ellip].n);
+                    NHn = Math.max(0, NHn);
 
                     var shade = false;
 
@@ -636,11 +638,3 @@ function shade() {
     raycasting(context, eye, PART2, WITH_SHADE);
 }
 
-function change_size() {
-    var canvas = document.getElementById("viewport");
-    var width = document.getElementById("width").value;
-    var height = document.getElementById("height").value;
-    canvas.width = width;
-    canvas.height = height;
-    main_part2();
-}
